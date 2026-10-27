@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// One research request from the user ("User input" stage)
+model ResearchRun {
+  id            String   @id @default(cuid())
+  query         String
+  yearFrom      Int?
+  yearTo        Int?
+  includeDatasheets Boolean @default(true)
+  status        String   @default("queued") // queued | running | done | error
+  currentStep   String?
+  error         String?
+  revisedQuery  String?
+  searchTermsJson String @default("[]")
+  platformsJson String   @default("[]")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  steps         PipelineStep[]
+  evidences     EvidenceItem[]
+  images        ImageItem[]
+  reports       Report[]
+  flags         FlagItem[]
+}
+
+// One stage of the 10-stage pipeline
+model PipelineStep {
+  id         String   @id @default(cuid())
+  runId      String
+  run        ResearchRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  key        String // router | gather | images | synthesize | criticism | output1 | guider | humanify | verify | output2
+  title      String
+  status     String   @default("pending") // pending | running | done | error
+  detail     String?
+  outputJson String?  // structured step result (JSON string)
+  order      Int
+  updatedAt  DateTime @updatedAt
+
+  @@unique([runId, key])
+}
+
+// Text evidence gathered from priority platforms
+model EvidenceItem {
+  id       String  @id @default(cuid())
+  runId    String
+  run      ResearchRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  title    String
+  url      String
+  domain   String
+  tier     Int     @default(2) // 1 = guideline body, 2 = platform
+  year     Int?
+  snippet  String
+  trust    Int     @default(0) // 0-100
+  inRange  Boolean @default(true) // within requested year range
+  kept     Boolean @default(true)
+}
+
+// Images found + credibility check results
+model ImageItem {
+  id           String  @id @default(cuid())
+  runId        String
+  run          ResearchRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  url          String
+  sourceDomain String?
+  caption      String?
+  trustScore   Int     @default(0) // 0-100
+  kept         Boolean @default(true)
+  reason       String? // why kept / removed
+}
+
+// Generated documents. kind: raw (highly programmed AI analyser) | master | humanized
+model Report {
+  id          String   @id @default(cuid())
+  runId       String
+  run         ResearchRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  kind        String
+  version     Int      @default(1)
+  content     String
+  verifyStatus String? // pass | fail (for humanized)
+  missingJson String?  // JSON array of missing data points found by verifier
+  createdAt   DateTime @default(now())
+
+  @@index([runId, kind])
+}
+
+// "Instead point" flags: where global criticism / standard sources differ
+model FlagItem {
+  id            String @id @default(cuid())
+  runId         String
+  run           ResearchRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  claim         String
+  standardView  String
+  alternateView String
+  note          String?
+}
+
+// User's own researched data ("Datasheets" page)
+model DatasheetEntry {
+  id        String   @id @default(cuid())
+  fieldName String
+  value     String
+  unit      String?
+  year      Int?
+  source    String?
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

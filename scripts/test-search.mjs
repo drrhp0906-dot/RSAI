@@ -1,0 +1,10 @@
+console.log("creating zai...");
+const mod = await import("z-ai-web-dev-sdk");
+const zai = await mod.default.create();
+console.log("calling web_search...");
+const res = await zai.functions.invoke("web_search", { query: "GINA asthma guideline 2024", num: 3 });
+console.log("web_search OK, results:", Array.isArray(res) ? res.length : typeof res);
+console.log("calling images.search...");
+const img = await zai.images.search.create({ query: "asthma inhaler chart", count: 3, rank: true });
+console.log("images.search OK, results:", img?.results?.length ?? 0);
+process.exit(0);

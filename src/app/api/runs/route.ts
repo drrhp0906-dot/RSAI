@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { spawn } from "child_process";
+import path from "path";
 import { db } from "@/lib/db";
-import { runPipeline, STEP_DEFS } from "@/lib/evidence-pipeline";
+import { STEP_DEFS } from "@/lib/evidence-pipeline";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,8 +32,17 @@ export async function POST(req: NextRequest) {
       include: { steps: true },
     });
 
-    // fire and forget: the client polls GET /api/runs/[id]
-    void runPipeline(run.id).catch(() => undefined);
+    // The pipeline runs in a detached bun worker process: the SDK runtime
+    // hard-crashes the next-dev node process when used in-process, but works
+    // perfectly under plain bun (verified standalone).
+    const workerPath = path.join(process.cwd(), "scripts", "pipeline-worker.ts");
+    const child = spawn("bun", [workerPath, run.id], {
+      detached: true,
+      stdio: ["ignore", "ignore", "ignore"],
+      cwd: process.cwd(),
+      env: { ...process.env, NODE_ENV: "production" },
+    });
+    child.unref();
 
     return NextResponse.json({ runId: run.id });
   } catch (e) {

@@ -12,10 +12,10 @@
 // 10 output2    - both final documents published to Output section
 // ============================================================
 
-import { db } from "@/lib/db";
-import { chatJson, chatText, imageSearch, sleep, webSearch } from "@/lib/ai";
-import { PRIORITY_1, PRIORITY_2, findByDomain, heuristicRoute, imageTrust, domainTrust } from "@/lib/platforms";
-import { mdToPlain, sanitizeDocumentText } from "@/lib/sanitize";
+import { db } from "./db";
+import { chatJson, chatText, imageSearch, sleep, webSearch } from "./ai";
+import { PRIORITY_1, PRIORITY_2, findByDomain, heuristicRoute, imageTrust, domainTrust } from "./platforms";
+import { mdToPlain, sanitizeDocumentText } from "./sanitize";
 
 export const STEP_DEFS: Array<{ key: string; title: string }> = [
   { key: "router", title: "Input Analysis & Platform Router" },

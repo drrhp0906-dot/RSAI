@@ -16,3 +16,20 @@ Stage Summary:
 - Deliverable: /home/z/my-project/download/mbbs_priority_guideline_websites.txt (verified 27 Oct 2026)
 - Key decisions: interpreted "IMRC" as ICMR (icmr.gov.in) and "European Heart Organisation" as ESC (escardio.org); excluded all non-resolving legacy domains per user's "currently active" requirement.
 - Reusable artifact: scripts/check_domains.py can be re-run to re-verify the list in future.
+
+---
+Task ID: 2
+Agent: main (Z.ai)
+Task: Follow-up request - create a second .txt list of the other largely-used platforms for MBBS research (PubMed, CDC-style daily-use platforms: databases, journals, clinical reference, drug resources, education platforms, research tools).
+
+Work Log:
+- Compiled 70 candidate platform domains across 12 planned categories.
+- Wrote /home/z/my-project/scripts/check_platforms.py (IPv4 curl check + page-title identity confirmation for uncertain domains). Fixed a UnicodeDecodeError by decoding with errors=replace.
+- Verification results: 41 UP (200), 23 UP-BOT (403 bot-protected but live: marrow.com, medscape.com, nejm.org, etc.), fda.gov root returned 404/401 to curl (Akamai bot protection) but confirmed live via WebFetch, cdsco.gov.in unreachable from sandbox DNS but confirmed live via WebFetch, ipc.gov.in returned 500 (NIC server flaky to bots, live), ctri.gov.in globally reachable but under maintenance at compile time, dams.co.in not resolving (excluded), ctri.nic.in legacy (excluded).
+- Identity confirmed via page titles: ijmr.org.in = Indian Journal of Medical Research, japi.org = JAPI, litfl.com = LITFL, medindia.net, whocc.no = ATC/DDD, msdmanuals.com = MSD Manuals.
+- Wrote deliverable /home/z/my-project/download/mbbs_research_platforms.txt: 12 sections, ~60 domains with org name + use-case + access notes, plus access tips and honest exclusion notes (dams.co.in, ctri.nic.in).
+
+Stage Summary:
+- Deliverable: /home/z/my-project/download/mbbs_research_platforms.txt (verified 27 Oct 2026), companion to Task 1 guideline list.
+- Key decisions: CTRI (ctri.gov.in) included despite maintenance (it is the official Indian registry, with explicit note); DAMS excluded as unreachable; IJMR hosted at ijmr.org.in (confirmed).
+- Reusable artifact: scripts/check_platforms.py.

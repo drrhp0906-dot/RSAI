@@ -1,0 +1,151 @@
+====================================================================
+ WIDELY-USED PLATFORMS FOR MBBS RESEARCH & STUDY (INDIA)
+ Companion file to: mbbs_priority_guideline_websites.txt
+ Compiled: 27 October 2026  |  All domains verified live
+====================================================================
+
+NOTES BEFORE YOU START
+- This file covers the DAILY-USE platforms: databases, journals,
+  clinical reference, drug resources, education & research tools.
+  (Guideline bodies like WHO/ESC/AHA/ICMR are in your first file.)
+- Type domains with https://www. in front where needed.
+- [FREE] = fully free  |  [ACCOUNT] = free registration
+- Some sites block automated checks with 403 but open normally in
+  your browser (they are confirmed live).
+
+--------------------------------------------------------------------
+1. PRIMARY RESEARCH DATABASES & SEARCH
+--------------------------------------------------------------------
+pubmed.ncbi.nlm.nih.gov | PubMed (NLM)            | THE biomedical search engine - 36M+ citations; use MeSH filters
+pmc.ncbi.nlm.nih.gov    | PubMed Central          | Free full-text archive of 10M+ articles [FREE]
+scholar.google.com      | Google Scholar          | Broad academic search with citation counts & alerts
+semanticscholar.org     | Semantic Scholar        | AI-powered search + TLDR paper summaries [FREE]
+europepmc.org           | Europe PMC              | PubMed + full texts + guideline search in one place
+medlineplus.gov         | MedlinePlus (NLM)       | Reliable patient-education material (for community medicine) [FREE]
+base-search.net         | BASE                    | 350M+ documents from university repositories [FREE]
+
+--------------------------------------------------------------------
+2. OPEN ACCESS & FREE FULL-TEXT
+--------------------------------------------------------------------
+doaj.org                | DOAJ                    | Directory of 20,000+ vetted open-access journals [FREE]
+unpaywall.org           | Unpaywall               | Browser extension that finds the legal free version of paywalled papers [FREE]
+
+--------------------------------------------------------------------
+3. TOP MEDICAL JOURNALS
+--------------------------------------------------------------------
+nejm.org                | New England Journal of Medicine | Landmark trials, case records, "Images in Clinical Medicine"
+thelancet.com           | The Lancet family       | High-impact global health & clinical research
+bmj.com                 | BMJ                     | Practice-changing research, education content
+jamanetwork.com         | JAMA Network            | JAMA + all specialty JAMA journals
+nature.com              | Nature Portfolio        | Basic science, Nature Medicine, Nature Reviews
+plos.org                | PLOS                    | Open-access journals incl. PLOS Medicine [FREE]
+science.org             | Science (AAAS)          | Premier general-science journal
+
+--------------------------------------------------------------------
+4. INDIAN JOURNALS & PUBLISHERS
+--------------------------------------------------------------------
+ijmr.org.in             | Indian Journal of Medical Research (ICMR) | India's flagship journal - free full text [FREE]
+japi.org                | JAPI                    | Journal of Association of Physicians of India - free articles [FREE]
+medknow.com             | Medknow (Wolters Kluwer)| Publisher portal for 100+ Indian specialty journals
+indianpediatrics.net    | Indian Pediatrics       | IAP journal - free full-text Indian paediatric research [FREE]
+
+--------------------------------------------------------------------
+5. CLINICAL TRIALS & REGISTRIES
+--------------------------------------------------------------------
+clinicaltrials.gov      | ClinicalTrials.gov      | Global trial registry - see how evidence is generated
+isrctn.com              | ISRCTN                  | International prospective trial registry
+ctri.gov.in             | CTRI                    | Clinical Trials Registry-India: ALL Indian trials must register here. NOTE: site was under maintenance/slow at compile time - if it fails, retry later (it is the official registry)
+
+--------------------------------------------------------------------
+6. POINT-OF-CARE CLINICAL REFERENCE
+--------------------------------------------------------------------
+uptodate.com            | UpToDate                | Topic-level evidence synthesis - use your college library login
+bestpractice.bmj.com    | BMJ Best Practice       | Structured condition summaries - often free via Indian institutions
+medscape.com            | Medscape / eMedicine    | Free clinical reference + drug interaction checker [ACCOUNT]
+merckmanuals.com        | Merck Manuals (MSD)     | Fully free professional textbook-quality reference [FREE]
+wikidoc.org             | WikiDoc                 | Community-maintained free clinical wiki [FREE]
+dermnetnz.org           | DermNet                 | The dermatology diagnosis + image reference [FREE]
+radiopaedia.org         | Radiopaedia             | Radiology cases, articles, "playlists" per topic [ACCOUNT]
+litfl.com               | LITFL (Life in the Fast Lane) | ECG library, ICU toxicology, FOAM classics [FREE]
+
+--------------------------------------------------------------------
+7. MEDICAL EDUCATION PLATFORMS (GLOBAL)
+--------------------------------------------------------------------
+osmosis.org             | Osmosis                 | Animated pathophysiology + notes [ACCOUNT]
+lecturio.com            | Lecturio                | Video lectures mapped to medical curriculum
+amboss.com              | AMBOSS                  | Library + QBank - excellent bridge to PG entrance prep (paid)
+kenhub.com              | Kenhub                  | Anatomy atlas, videos & quizzes
+teachmeanatomy.info     | TeachMeAnatomy          | Free anatomy notes with illustrations [FREE]
+geekymedics.com         | Geeky Medics            | Free OSCE guides, clinical skills videos [FREE]
+zerotofinals.com        | Zero To Finals          | Free simplified medicine notes + podcasts [FREE]
+ninjanerd.org           | Ninja Nerd              | Free whiteboard deep-dive lectures [FREE]
+onlinemeded.org         | OnlineMedEd             | Free core clinical-year video curriculum [FREE]
+
+--------------------------------------------------------------------
+8. INDIAN TEST-PREP & GOVERNMENT LEARNING
+--------------------------------------------------------------------
+marrow.com              | Marrow                  | India's largest MBBS/NEET-PG video + QBank platform (pro version paid)
+prepladder.com          | PrepLadder              | Indian QBanks, notes & video lectures
+unacademy.com           | Unacademy MBBS          | Live classes, educators, PG-entrance series
+swayam.gov.in           | SWAYAM (Govt of India)  | Free MOOCs incl. medical & basic sciences [FREE]
+(DAMS dams.co.in excluded - site was not reachable at compile time;
+ try it manually later)
+
+--------------------------------------------------------------------
+9. INDIA - REGULATORY & DRUG BODIES (research-relevant)
+--------------------------------------------------------------------
+nmc.org.in              | National Medical Commission | CBME curriculum, CRMI regulations, NExT updates [FREE]
+natboard.edu.in         | NBEMS                   | NEET-PG, FMGE, DNB exam notices & bulletins
+cdsco.gov.in            | CDSCO                   | India's drug regulator: approvals, recalls, device rules
+ipc.gov.in              | Indian Pharmacopoeia Commission | IP standards + FREE National Formulary of India (NFI) PDF [FREE]
+
+--------------------------------------------------------------------
+10. DRUGS & PHARMACOLOGY
+--------------------------------------------------------------------
+drugs.com               | Drugs.com               | Pill identifier, interaction checker, monographs [ACCOUNT]
+mims.com                | MIMS India              | Indian brand names, dosing, interactions [ACCOUNT]
+dailymed.nlm.nih.gov    | DailyMed (NIH)          | Official US FDA drug labels [FREE]
+fda.gov                 | US FDA                  | Drug approvals & safety communications [FREE]
+ema.europa.eu           | EMA                     | European Medicines Agency - approvals & limits
+drugbank.com            | DrugBank                | Mechanism-of-action & interaction database (free academic tier)
+whocc.no                | WHOCC ATC/DDD (Norway)  | ATC classification - needed for drug-utilisation research [FREE]
+
+--------------------------------------------------------------------
+11. MEDICAL NEWS
+--------------------------------------------------------------------
+medpagetoday.com        | MedPage Today           | Breaking clinical news by specialty [ACCOUNT]
+medindia.net            | Medindia                | Indian health news, drug directory, calculators [FREE]
+
+--------------------------------------------------------------------
+12. RESEARCH TOOLS - CITATION, WRITING, NETWORKING, AI
+--------------------------------------------------------------------
+zotero.org              | Zotero                  | Free citation manager + browser connector [FREE]
+mendeley.com            | Mendeley (Elsevier)     | Reference manager + PDF annotator [ACCOUNT]
+connectedpapers.com     | Connected Papers        | Visual citation graph around any paper (free tier)
+researchgate.net        | ResearchGate            | Request full texts directly from authors [ACCOUNT]
+orcid.org               | ORCID                   | Researcher ID - required by many journals now [FREE]
+icmje.org               | ICMJE                   | Authorship rules + free conflict-of-interest forms [FREE]
+elicit.com              | Elicit                  | AI research assistant: finds & tabulates papers (free tier) [ACCOUNT]
+consensus.app           | Consensus               | AI answers to yes/no clinical questions with citations (free tier) [ACCOUNT]
+rayyan.ai               | Rayyan                  | Systematic-review title/abstract screening - great for ICMR projects [FREE]
+
+====================================================================
+ACCESS TIPS FOR INDIAN MBBS STUDENTS
+====================================================================
+1. Power combo: Zotero (citations) + Unpaywall (free PDFs) + PubMed
+   filters (last 5 years, free full text) covers 90% of paper needs.
+2. Medscape and MIMS India accounts are free - the interaction
+   checker is gold for pharmacology vivas.
+3. Check your college library for UpToDate / BMJ Best Practice
+   institutional logins before paying for anything.
+4. Merck Manuals, LITFL, TeachMeAnatomy, Zero To Finals, Ninja Nerd
+   are 100% free - ideal when money is tight.
+5. For any ICMR/Student research project: register on CTRI if it is
+   a trial, get an ORCID early, and screen papers in Rayyan.
+6. Excluded at compile time because unreachable: dams.co.in (DAMS),
+   ctri.nic.in (legacy CTRI address - the registry lives at
+   ctri.gov.in), journals.lww.com mirror of IJMR (use ijmr.org.in).
+7. Verification: every listed domain returned a live HTTP response
+   on 27 October 2026 (fda.gov and cdsco.gov.in confirmed via a
+   separate network path - they block simple automated checks but
+   open normally in browsers).

@@ -1,0 +1,169 @@
+====================================================================
+ FIRST-PRIORITY GUIDELINE WEBSITES FOR MBBS RESEARCH (INDIA)
+ Compiled: 27 October 2026  |  All domains verified live
+====================================================================
+
+NOTES BEFORE YOU START
+- Type these domains in your browser with https://www. in front
+  (e.g., https://www.who.int).
+- "IMRC" in your request = ICMR (Indian Council of Medical Research)
+  -> icmr.gov.in  [included in Section 3]
+- "European Heart Organisation" = European Society of Cardiology
+  (ESC), publisher of the European Heart Journal guidelines
+  -> escardio.org  [included in Section 5]
+- [FREE] = full guideline PDFs openly downloadable
+- [ACCOUNT] = free registration needed for PDFs
+
+--------------------------------------------------------------------
+1. GLOBAL HEALTH AUTHORITIES
+--------------------------------------------------------------------
+who.int              | World Health Organization      | Global guidelines: TB, HIV, malaria, IMCI, ICD-11. Document library at iris.who.int [FREE]
+nih.gov              | US National Institutes of Health | Health topics A-Z, consensus statements, research updates
+nhlbi.nih.gov        | NHLBI (US)                     | Cardiovascular, lung & blood guidelines (asthma, hypertension, cholesterol background) [FREE]
+cdc.gov              | US CDC                         | Infectious disease management, immunization schedules, MMWR reports
+wma.net              | World Medical Association      | Declaration of Helsinki, medical ethics documents [FREE]
+
+--------------------------------------------------------------------
+2. EVIDENCE & GUIDELINE REPOSITORIES (search ANY topic here first)
+--------------------------------------------------------------------
+cochranelibrary.com  | Cochrane Library               | Gold-standard systematic reviews; abstracts free
+nice.org.uk          | NICE (UK)                      | Free full-text clinical guidelines for nearly every condition [FREE]
+sign.ac.uk           | SIGN (Scotland)                | Evidence-graded national guidelines [FREE]
+g-i-n.net            | Guidelines International Network | Search engine across 100+ guideline organisations
+pubmed.ncbi.nlm.nih.gov | PubMed (NLM)                | THE primary research database - use for every case write-up
+scholar.google.com   | Google Scholar                 | Broad academic search (cross-check quality before citing)
+
+--------------------------------------------------------------------
+3. INDIA - NATIONAL BODIES (highest priority for Indian practice)
+--------------------------------------------------------------------
+icmr.gov.in          | ICMR                           | National guidelines & advisories: TB, dengue, antimicrobial stewardship, ethics [FREE]
+mohfw.gov.in         | MoHFW                          | National Health Programmes, Standard Treatment Guidelines, EMR standards [FREE]
+ncdc.mohfw.gov.in    | NCDC                           | Outbreak & surveillance guidelines: dengue, chikungunya, leprosy, AMR [FREE]
+nhm.gov.in           | National Health Mission        | RMNCH+A, NCD programme implementation guidelines [FREE]
+tbcindia.mohfw.gov.in| NTEP (National TB Elimination Programme) | India's official TB/DR-TB guidelines, Ni-kshay [FREE]
+nimhans.ac.in        | NIMHANS                        | Mental-health training materials & Indian psychiatric guidance
+
+--------------------------------------------------------------------
+4. INDIA - SPECIALTY SOCIETIES
+--------------------------------------------------------------------
+apiindia.org         | API (Assoc. of Physicians of India) | API Textbook updates, position statements in internal medicine
+csi.org.in           | CSI (Cardiological Society of India) | India-specific cardiology guidelines & consensus
+iapindia.org         | IAP (Indian Academy of Pediatrics)   | IAP guidelines, IAP Immunization Timetable (parent + pro versions)
+indianpediatrics.net | Indian Pediatrics (IAP journal)      | Free full-text Indian paediatric guideline PDFs [FREE]
+fogsi.org            | FOGSI (Obstetrics & Gynaecology)     | Indian OB-GYN clinical practice recommendations
+iadvl.org            | IADVL (Dermatologists of India)      | Indian dermatology guidelines (leprosy, vitiligo, psoriasis)
+
+--------------------------------------------------------------------
+5. CARDIOLOGY (your stated priority)
+--------------------------------------------------------------------
+escardio.org         | ESC - European Society of Cardiology ("European Heart Organisation") | ESC Clinical Practice Guidelines: ESC 2024 HTN, AF, HF, ACS - free PDFs [ACCOUNT]
+professional.heart.org | AHA Professional Heart Hub    | AHA/ACC joint guidelines: BP, cholesterol, HF, CPR/ACLS - full PDFs [FREE]
+heart.org            | American Heart Association     | Professional + patient education content
+acc.org              | ACC (American College of Cardiology) | Guideline hub + free ACC Guideline Clinical App
+(csi.org.in          | Cardiological Society of India | see Section 4)
+
+--------------------------------------------------------------------
+6. RESPIRATORY MEDICINE
+--------------------------------------------------------------------
+goldcopd.org         | GOLD                           | Global strategy for COPD - report updated every year [FREE]
+ginasthma.org        | GINA                           | Global strategy for asthma, yearly pocket guide [FREE]
+thoracic.org         | ATS (American Thoracic Society) | Pulmonary & critical care guidelines
+ersnet.org           | ERS (European Respiratory Society) | European respiratory guidelines
+
+--------------------------------------------------------------------
+7. INFECTIOUS DISEASES
+--------------------------------------------------------------------
+idsociety.org        | IDSA                           | Antibiotic selection, sepsis, opportunistic infections
+clinicalinfo.hiv.gov | NIH HIV/OI Guidelines          | US HIV treatment & opportunistic infection guidelines [FREE]
+
+--------------------------------------------------------------------
+8. ENDOCRINE & METABOLIC
+--------------------------------------------------------------------
+diabetes.org         | ADA (American Diabetes Association) | Standards of Care in Diabetes - annual, free PDF [FREE]
+idf.org              | IDF (International Diabetes Federation) | Global diabetes data & type-2 recommendations
+endocrine.org        | Endocrine Society              | Thyroid, adrenal, osteoporosis, PCOS guidelines
+
+--------------------------------------------------------------------
+9. NEPHROLOGY
+--------------------------------------------------------------------
+kdigo.org            | KDIGO                          | CKD, AKI, glomerulonephritis, transplant guidelines [FREE]
+
+--------------------------------------------------------------------
+10. GASTROENTEROLOGY & HEPATOLOGY
+--------------------------------------------------------------------
+easl.eu              | EASL (European Liver Assoc.)   | Hepatitis, cirrhosis, NAFLD guidelines [FREE]
+aasld.org            | AASLD (US Liver Assoc.)        | US liver guidance & practice guidelines
+gi.org               | ACG (American College of Gastro.) | GERD, IBD, GI bleed guidelines
+gastro.org           | AGA (American Gastro. Assoc.)  | GI clinical practice guidelines
+worldgastroenterology.org | WGO                      | Global guidelines with "cascades" - ideal for resource-limited settings [FREE]
+
+--------------------------------------------------------------------
+11. HAEMATOLOGY & ONCOLOGY
+--------------------------------------------------------------------
+hematology.org       | ASH (American Society of Hematology) | Anemia, sickle cell, VTE, ITP guidelines [FREE]
+asco.org             | ASCO                           | Cancer treatment & survivorship guidelines
+esmo.org             | ESMO                           | European oncology guidelines [ACCOUNT]
+nccn.org             | NCCN                           | Cancer-by-site clinical practice guidelines [ACCOUNT]
+
+--------------------------------------------------------------------
+12. OBSTETRICS & GYNAECOLOGY
+--------------------------------------------------------------------
+acog.org             | ACOG                           | US practice bulletins (antenatal care, PPH, ectopic)
+rcog.org.uk          | RCOG                           | UK Green-top guidelines
+(fogsi.org           | FOGSI                          | see Section 4)
+
+--------------------------------------------------------------------
+13. PAEDIATRICS
+--------------------------------------------------------------------
+aap.org              | AAP (American Academy of Pediatrics) | Policy statements & clinical reports
+(iapindia.org + indianpediatrics.net | IAP            | see Section 4)
+
+--------------------------------------------------------------------
+14. PSYCHIATRY
+--------------------------------------------------------------------
+psychiatry.org       | APA (American Psychiatric Association) | Practice guidelines, DSM portal
+(nimhans.ac.in       | NIMHANS                        | see Section 3)
+
+--------------------------------------------------------------------
+15. ANAESTHESIA & CRITICAL CARE
+--------------------------------------------------------------------
+asahq.org            | ASA (American Society of Anesthesiologists) | Difficult airway algorithm, monitoring standards
+wfsahq.org           | WFSA                           | Global anesthesia recommendations & tutorials [FREE]
+sccm.org             | SCCM                           | Surviving Sepsis Campaign, ICU guidelines
+esicm.org            | ESICM                          | European intensive care guidelines
+
+--------------------------------------------------------------------
+16. DERMATOLOGY
+--------------------------------------------------------------------
+aad.org              | AAD (American Academy of Dermatology) | Psoriasis, acne, melanoma guidelines
+(iadvl.org           | IADVL                          | see Section 4)
+
+--------------------------------------------------------------------
+17. UROLOGY
+--------------------------------------------------------------------
+uroweb.org           | EAU (European Association of Urology) | All urology guidelines, free PDFs [FREE]
+auanet.org           | AUA                            | US urology guidelines (BPH, stones, PSA)
+
+--------------------------------------------------------------------
+18. BONUS - CLINICAL REFERENCE (paid / institutional access)
+--------------------------------------------------------------------
+uptodate.com         | UpToDate                       | Topic reviews - check if your college library subscribes
+bestpractice.bmj.com | BMJ Best Practice              | Often free through Indian institutional logins
+medscape.com         | Medscape                       | Free drug reference & news [ACCOUNT]
+
+====================================================================
+ACCESS TIPS FOR INDIAN MBBS STUDENTS
+====================================================================
+1. ESC, NCCN, ESMO, Medscape: create a FREE account to unlock PDFs.
+2. NICE, KDIGO, GOLD, GINA, ADA Standards, WGO, WFSA: fully free.
+3. ICMR / MoHFW / NTEP PDFs: always free - use these for Indian
+   epidemiology and drug regimens in viva answers.
+4. PubMed search pattern: topic + ("guideline" OR "recommendation")
+   + last 5 years filter.
+5. Legacy domains NOT included because they no longer resolve:
+   icmr.nic.in (use icmr.gov.in), ncdc.gov.in (use
+   ncdc.mohfw.gov.in), tbcindia.gov.in (use tbcindia.mohfw.gov.in),
+   dghs.gov.in (content now under mohfw.gov.in).
+6. Verification method: every domain above returned a live HTTP
+   response on 27 October 2026 (some block automated tools with
+   403 but load normally in a browser).

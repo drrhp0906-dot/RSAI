@@ -1,0 +1,530 @@
+     1→// ============================================================
+     2→// MedRoute evidence pipeline (10 stages)
+     3→//  1 router     - analyse input, pick Priority-1/2 platforms
+     4→//  2 gather     - year-range aware evidence gathering
+     5→//  3 images     - image credibility check
+     6→//  4 synthesize - summarise all data into the Raw AI report
+     7→//  5 criticism  - global criticism filter -> "instead points"
+     8→//  6 output1    - Raw AI report published to Output section
+     9→//  7 guider     - Guider & Peer Data Analyser -> Master report
+    10→//  8 humanify   - humanisation audit of the master report
+    11→//  9 verify     - analyser loop: humanified vs master (missing data?)
+    12→// 10 output2    - both final documents published to Output section
+    13→// ============================================================
+    14→
+    15→import { db } from "./db";
+    16→import { chatJson, chatText, imageSearch, sleep, webSearch } from "./ai";
+    17→import { PRIORITY_1, PRIORITY_2, findByDomain, heuristicRoute, imageTrust, domainTrust } from "./platforms";
+    18→import { mdToPlain, sanitizeDocumentText } from "./sanitize";
+    19→
+    20→export const STEP_DEFS: Array<{ key: string; title: string }> = [
+    21→  { key: "router", title: "Input Analysis & Platform Router" },
+    22→  { key: "gather", title: "Evidence Gathering (Priority-1/2 sources, year-range aware)" },
+    23→  { key: "images", title: "Image Credibility Check" },
+    24→  { key: "synthesize", title: "Data Summarisation (Raw AI Report)" },
+    25→  { key: "criticism", title: "Global Criticism & Instead-Point Filter" },
+    26→  { key: "output1", title: "Output Stage 1 - Raw AI Report published" },
+    27→  { key: "guider", title: "Guider & Peer Data Analyser (Master Report)" },
+    28→  { key: "humanify", title: "Humanification Audit" },
+    29→  { key: "verify", title: "Data Analyser Verification Loop" },
+    30→  { key: "output2", title: "Output Stage 2 - Final Documents published" },
+    31→];
+    32→
+    33→interface RouterOut {
+    34→  revisedQuery: string;
+    35→  searchTerms: string[];
+    36→  chosen: Array<{ domain: string; reason: string }>;
+    37→}
+    38→
+    39→interface EvidenceRow {
+    40→  title: string;
+    41→  url: string;
+    42→  domain: string;
+    43→  tier: number;
+    44→  year: number | null;
+    45→  snippet: string;
+    46→  trust: number;
+    47→  inRange: boolean;
+    48→}
+    49→
+    50→function yearFromText(...texts: Array<string | null | undefined>): number | null {
+    51→  for (const t of texts) {
+    52→    if (!t) continue;
+    53→    const m = t.match(/(19|20)\d{2}/);
+    54→    if (m) {
+    55→      const y = parseInt(m[0], 10);
+    56→      if (y >= 1990 && y <= 2100) return y;
+    57→    }
+    58→  }
+    59→  return null;
+    60→}
+    61→
+    62→async function setStep(runId: string, key: string, status: string, detail?: string, outputJson?: unknown) {
+    63→  await db.pipelineStep.updateMany({
+    64→    where: { runId, key },
+    65→    data: {
+    66→      status,
+    67→      detail: detail ?? undefined,
+    68→      outputJson: outputJson === undefined ? undefined : JSON.stringify(outputJson),
+    69→    },
+    70→  });
+    71→  await db.researchRun.update({ where: { id: runId }, data: { currentStep: key } });
+    72→}
+    73→
+    74→async function failRun(runId: string, stepKey: string, err: unknown) {
+    75→  const message = err instanceof Error ? err.message : String(err);
+    76→  await setStep(runId, stepKey, "error", message.slice(0, 500));
+    77→  await db.researchRun.update({
+    78→    where: { id: runId },
+    79→    data: { status: "error", error: `Step ${stepKey}: ${message.slice(0, 800)}` },
+    80→  });
+    81→}
+    82→
+    83→// ---------------- Stage 1: router ----------------
+    84→async function stageRouter(runId: string): Promise<{ routerOut: RouterOut; run: { query: string; yearFrom: number | null; yearTo: number | null } }> {
+    85→  const run = await db.researchRun.findUniqueOrThrow({ where: { id: runId } });
+    86→  await setStep(runId, "router", "running");
+    87→
+    88→  const catalog = [...PRIORITY_1, ...PRIORITY_2]
+    89→    .map((p) => `${p.tier === 1 ? "P1" : "P2"} | ${p.domain} | ${p.name} | ${p.category} | topics: ${p.keywords.filter((k) => k !== "any").join(", ") || "general"}`)
+    90→    .join("\n");
+    91→
+    92→  const system = `You are a medical research router for an Indian MBBS student. Given a research query, you choose which trusted platform domains to search. Priority-1 (P1) are guideline bodies and authorities; Priority-2 (P2) are widely-used platforms (journals, drug references, databases). Choose 4-6 domains, ALWAYS including at least two P1 sources. Never choose education/qbank platforms (marrow, prepladder, osmosis, amboss, geekymedics, zerotofinals, teachmeanatomy, lecturio) for clinical evidence runs.`;
+    93→
+    94→  const user = `RESEARCH QUERY: ${run.query}
+    95→YEAR RANGE: ${run.yearFrom && run.yearTo ? `${run.yearFrom} to ${run.yearTo} (only evidence from this period should be treated as primary)` : "not specified"}
+    96→ALSO USE THE USER'S OWN DATASHEET DATA: ${run.includeDatasheets ? "yes (it will be merged later)" : "no"}
+    97→
+    98→CATALOG:
+    99→${catalog}
+   100→
+   101→Return JSON: {"revisedQuery": "improved search wording", "searchTerms": ["3-5 specific search phrases"], "chosen": [{"domain": "exact domain from catalog", "reason": "one line why"}]}`;
+   102→
+   103→  const parsed = await chatJson<RouterOut>(system, user, 1200).catch(() => null);
+   104→
+   105→  let routerOut: RouterOut;
+   106→  if (parsed && Array.isArray(parsed.chosen) && parsed.chosen.length) {
+   107→    const valid = parsed.chosen.filter((c) => findByDomain(c.domain));
+   108→    routerOut = {
+   109→      revisedQuery: parsed.revisedQuery || run.query,
+   110→      searchTerms: Array.isArray(parsed.searchTerms) && parsed.searchTerms.length ? parsed.searchTerms.slice(0, 5) : [run.query],
+   111→      chosen: valid.length ? valid : heuristicRoute(run.query).map((p) => ({ domain: p.domain, reason: "heuristic keyword match" })),
+   112→    };
+   113→  } else {
+   114→    const picked = heuristicRoute(run.query);
+   115→    routerOut = {
+   116→      revisedQuery: run.query,
+   117→      searchTerms: [run.query],
+   118→      chosen: picked.map((p) => ({ domain: p.domain, reason: "heuristic keyword match" })),
+   119→    };
+   120→  }
+   121→
+   122→  await db.researchRun.update({
+   123→    where: { id: runId },
+   124→    data: {
+   125→      revisedQuery: routerOut.revisedQuery,
+   126→      searchTermsJson: JSON.stringify(routerOut.searchTerms),
+   127→      platformsJson: JSON.stringify(routerOut.chosen),
+   128→    },
+   129→  });
+   130→  const names = routerOut.chosen.map((c) => findByDomain(c.domain)?.name ?? c.domain).join(", ");
+   131→  await setStep(runId, "router", "done", `Selected ${routerOut.chosen.length} platforms: ${names}`, routerOut);
+   132→  return { routerOut, run: { query: run.query, yearFrom: run.yearFrom, yearTo: run.yearTo } };
+   133→}
+   134→
+   135→// ---------------- Stage 2: gather ----------------
+   136→async function stageGather(runId: string, routerOut: RouterOut, run: { query: string; yearFrom: number | null; yearTo: number | null }) {
+   137→  await setStep(runId, "gather", "running");
+   138→  const recencyDays = run.yearFrom
+   139→    ? Math.max(30, Math.min(3650, Math.floor((Date.now() - new Date(`${run.yearFrom}-01-01`).getTime()) / 86400000)))
+   140→    : undefined;
+   141→
+   142→  const base = routerOut.revisedQuery || run.query;
+   143→  const queries: string[] = [];
+   144→  for (const c of routerOut.chosen.slice(0, 6)) {
+   145→    queries.push(`site:${c.domain} ${base}`);
+   146→  }
+   147→  queries.push(`${base} clinical guideline evidence`);
+   148→
+   149→  const seen = new Set<string>();
+   150→  const rows: EvidenceRow[] = [];
+   151→
+   152→  for (const q of queries) {
+   153→    try {
+   154→      const results = (await webSearch(q, 5, recencyDays)) as Array<{
+   155→        url: string; name: string; snippet: string; host_name: string; date?: string;
+   156→      }>;
+   157→      for (const r of results ?? []) {
+   158→        if (!r?.url || seen.has(r.url)) continue;
+   159→        seen.add(r.url);
+   160→        const domain = (r.host_name || new URL(r.url).hostname || "").replace(/^www\./, "");
+   161→        const year = yearFromText(r.date, r.name, r.snippet);
+   162→        const inRange =
+   163→          run.yearFrom && run.yearTo ? year === null || (year >= run.yearFrom && year <= run.yearTo) : true;
+   164→        const p = findByDomain(domain);
+   165→        rows.push({
+   166→          title: (r.name || "").slice(0, 240) || r.url,
+   167→          url: r.url,
+   168→          domain,
+   169→          tier: p?.tier ?? 2,
+   170→          year,
+   171→          snippet: (r.snippet || "").slice(0, 500),
+   172→          trust: domainTrust(domain, p?.tier),
+   173→          inRange,
+   174→        });
+   175→      }
+   176→    } catch {
+   177→      // one failed query should not kill the run
+   178→    }
+   179→    await sleep(150);
+   180→  }
+   181→
+   182→  rows.sort((a, b) => b.trust - a.trust || Number(b.inRange) - Number(a.inRange));
+   183→  const keptRows = rows.slice(0, 24);
+   184→  if (keptRows.length) {
+   185→    await db.evidenceItem.deleteMany({ where: { runId } });
+   186→    await db.evidenceItem.createMany({
+   187→      data: keptRows.map((r) => ({
+   188→        runId, title: r.title, url: r.url, domain: r.domain, tier: r.tier,
+   189→        year: r.year, snippet: r.snippet, trust: r.trust, inRange: r.inRange, kept: true,
+   190→      })),
+   191→    });
+   192→  }
+   193→  const outOfRange = keptRows.filter((r) => !r.inRange).length;
+   194→  const p1 = keptRows.filter((r) => r.tier === 1).length;
+   195→  await setStep(
+   196→    runId, "gather", "done",
+   197→    `${keptRows.length} evidence items kept (${p1} from Priority-1 bodies; ${outOfRange} outside year range will be marked)`,
+   198→    { found: rows.length, kept: keptRows.length, outOfRange },
+   199→  );
+   200→}
+   201→
+   202→// ---------------- Stage 3: images ----------------
+   203→async function stageImages(runId: string, searchTerms: string[], query: string) {
+   204→  await setStep(runId, "images", "running");
+   205→  const imgQueries = searchTerms.slice(0, 2);
+   206→  if (!imgQueries.length) imgQueries.push(query);
+   207→  imgQueries.push(`${query} chart figure`);
+   208→
+   209→  await db.imageItem.deleteMany({ where: { runId } });
+   210→  const seen = new Set<string>();
+   211→  const candidates: Array<{ url: string; sourceDomain: string | null; caption: string | null }> = [];
+   212→  for (const q of imgQueries.slice(0, 3)) {
+   213→    const res = await imageSearch(q, 5);
+   214→    for (const r of res) {
+   215→      if (!r?.original_url || seen.has(r.original_url)) continue;
+   216→      seen.add(r.original_url);
+   217→      let host: string | null = null;
+   218→      try {
+   219→        host = new URL(r.original_url).hostname.replace(/^www\./, "");
+   220→      } catch {
+   221→        host = null;
+   222→      }
+   223→      candidates.push({ url: r.original_url, sourceDomain: host, caption: (r.caption || q).slice(0, 200) });
+   224→    }
+   225→    await sleep(150);
+   226→  }
+   227→
+   228→  const scored = candidates.map((c) => {
+   229→    const { score, reason } = imageTrust(c.sourceDomain ?? undefined);
+   230→    return { ...c, trustScore: score, kept: score >= 70, reason };
+   231→  });
+   232→  scored.sort((a, b) => b.trustScore - a.trustScore);
+   233→  const kept = scored.filter((s) => s.kept).slice(0, 4);
+   234→  const finalRows = [...kept, ...scored.filter((s) => !s.kept).slice(0, 6)];
+   235→
+   236→  if (finalRows.length) {
+   237→    await db.imageItem.createMany({
+   238→      data: finalRows.map((r) => ({
+   239→        runId, url: r.url, sourceDomain: r.sourceDomain, caption: r.caption,
+   240→        trustScore: r.trustScore, kept: r.kept, reason: r.reason,
+   241→      })),
+   242→    });
+   243→  }
+   244→  await setStep(runId, "images", "done", `${kept.length} credible images kept, ${finalRows.length - kept.length} removed by credibility check`, { found: scored.length, kept: kept.length });
+   245→}
+   246→
+   247→// ---------------- helpers for report stages ----------------
+   248→async function loadEvidence(runId: string) {
+   249→  return db.evidenceItem.findMany({ where: { runId }, orderBy: [{ trust: "desc" }, { url: "asc" }] });
+   250→}
+   251→
+   252→function evidenceBlock(items: Awaited<ReturnType<typeof loadEvidence>>): string {
+   253→  return items
+   254→    .map((e, i) => `[E${i + 1}] (${e.tier === 1 ? "P1" : "P2"}, trust ${e.trust}${e.inRange ? "" : ", OUTSIDE YEAR RANGE"}, year ${e.year ?? "unknown"}) ${e.domain} - "${e.title}" - ${e.snippet}`)
+   255→    .join("\n");
+   256→}
+   257→
+   258→async function loadImages(runId: string) {
+   259→  return db.imageItem.findMany({ where: { runId }, orderBy: [{ trustScore: "desc" }] });
+   260→}
+   261→
+   262→// ---------------- Stage 4: synthesize ----------------
+   263→async function stageSynthesize(runId: string, run: { query: string; yearFrom: number | null; yearTo: number | null }) {
+   264→  await setStep(runId, "synthesize", "running");
+   265→  const [evidence, images, datasheets] = await Promise.all([
+   266→    loadEvidence(runId),
+   267→    loadImages(runId),
+   268→    db.researchRun.findUniqueOrThrow({ where: { id: runId }, select: { includeDatasheets: true } }).then(async (r) =>
+   269→      r.includeDatasheets ? db.datasheetEntry.findMany({ orderBy: { createdAt: "asc" } }) : [],
+   270→    ),
+   271→  ]);
+   272→
+   273→  const keptImages = images.filter((i) => i.kept);
+   274→  const dsBlock = datasheets.length
+   275→    ? datasheets.map((d) => `- ${d.fieldName}: ${d.value}${d.unit ? " " + d.unit : ""}${d.year ? ` (${d.year})` : ""} | source: ${d.source ?? "user"}${d.note ? ` | note: ${d.note}` : ""}`).join("\n")
+   276→    : "(no user datasheet entries provided)";
+   277→
+   278→  const system = `You are a meticulous medical data analyst writing for an Indian MBBS researcher. You write factual, citation-anchored reports. NEVER invent numbers, facts, or sources. Every factual claim must end with a citation tag like [E3] pointing to the evidence list you were given. If evidence conflicts, present both positions and label the conflict. If the user's own datasheet data is provided, integrate it under its own subsection and clearly mark it as user-supplied data.`;
+   279→
+   280→  const user = `RESEARCH QUERY: ${run.query}
+   281→YEAR RANGE: ${run.yearFrom && run.yearTo ? `${run.yearFrom}-${run.yearTo} (primary evidence must fall inside this range; anything outside must be explicitly marked as outside-range context)` : "not specified"}
+   282→
+   283→EVIDENCE LIST:
+   284→${evidenceBlock(evidence) || "(no text evidence found - state this honestly)"}
+   285→
+   286→CREDIBLE IMAGES (only these may be embedded, exactly as written):
+   287→${keptImages.length ? keptImages.map((i) => `![${i.caption ?? "figure"}](${i.url}) - source: ${i.sourceDomain ?? "unknown"} (trust ${i.trustScore})`).join("\n") : "(none passed the credibility check)"}
+   288→
+   289→USER DATASHEET DATA:
+   290→${dsBlock}
+   291→
+   292→Write the RAW AI DATA REPORT in markdown with EXACTLY these sections:
+   293→# Raw AI Data Report
+   294→## 1. Meta
+   295→Run metadata (query, year range, date, number of evidence items, platforms used).
+   296→## 2. Executive Summary
+   297→## 3. Key Findings
+   298→Numbered findings, each with citation tags and years. Mark any out-of-range evidence as "(outside year range - context only)".
+   299→## 4. Detailed Analysis
+   300→Thematic subsections (### level). Use markdown tables for numeric comparisons. Include a subsection "User Datasheet Additions" if datasheet data exists.
+   301→## 5. Evidence Quality and Credibility
+   302→A markdown table of the most important sources (domain, tier P1/P2, year, trust, what it contributed). Note anything excluded and why.
+   303→## 6. Visual Evidence
+   304→Embed ONLY the credible images listed above (exact markdown), each with a one-line credibility caption. If none, write "No images passed the credibility check."
+   305→## 7. References
+   306→List every [E#] as: [E1] domain - title - year - URL.`;
+   307→
+   308→  const raw = await chatText(system, user, 6500);
+   309→  const { text } = sanitizeDocumentText(raw);
+   310→  const saved = await db.report.create({
+   311→    data: { runId, kind: "raw", version: 1, content: text || "Report generation returned empty output.", verifyStatus: null, missingJson: null },
+   312→  });
+   313→  await setStep(runId, "synthesize", "done", `Raw AI report drafted (${Math.round(text.length / 1000)}k chars, ${evidence.length} evidence anchors)`, { reportId: saved.id, evidenceAnchors: evidence.length });
+   314→  return saved;
+   315→}
+   316→
+   317→// ---------------- Stage 5: criticism ----------------
+   318→async function stageCriticism(runId: string, run: { query: string; yearFrom: number | null; yearTo: number | null }) {
+   319→  await setStep(runId, "criticism", "running");
+   320→  const rawReport = await db.report.findFirst({ where: { runId, kind: "raw" }, orderBy: { version: "desc" } });
+   321→  if (!rawReport) throw new Error("raw report missing");
+   322→
+   323→  const system = `You are a critical-appraisal reviewer (peer data analyser) for medical research. You identify: (a) claims in the report where global criticism exists (study bias, retracted evidence, industry funding, guideline controversies), and (b) claims where a standard data source would say something different from what the report states. For each, you write BOTH the standard view and the alternate view.`;
+   324→
+   325→  const user = `RESEARCH QUERY: ${run.query}
+   326→REPORT TO AUDIT:
+   327→${rawReport.content.slice(0, 12000)}
+   328→
+   329→Return JSON: {"flags": [{"claim": "the disputed claim", "standardView": "what the standard/authoritative source says", "alternateView": "the divergent finding or criticism", "note": "why this divergence exists or why it matters"}]}
+   330→Only include genuine, defensible divergences (0-6 flags). If everything is consistent, return an empty flags array.`;
+   331→
+   332→  const parsed = await chatJson<{ flags: Array<{ claim: string; standardView: string; alternateView: string; note: string }> }>(system, user, 2200);
+   333→  const flags = parsed?.flags?.filter((f) => f?.claim && f?.standardView && f?.alternateView) ?? [];
+   334→
+   335→  if (flags.length) {
+   336→    await db.flagItem.deleteMany({ where: { runId } });
+   337→    await db.flagItem.createMany({
+   338→      data: flags.map((f) => ({
+   339→        runId, claim: f.claim.slice(0, 600), standardView: f.standardView.slice(0, 900),
+   340→        alternateView: f.alternateView.slice(0, 900), note: (f.note ?? "").slice(0, 600),
+   341→      })),
+   342→    });
+   343→  }
+   344→
+   345→  let content = rawReport.content;
+   346→  const section = `
+   347→
+   348→## 6. Global Criticism and Instead Points
+   349→${flags.length ? flags.map((f, i) => `### INSTEAD POINT ${i + 1}\n- **Claim in this report:** ${f.claim}\n- **Standard data source view:** ${f.standardView}\n- **Alternate / criticised view:** ${f.alternateView}\n- **Why flagged:** ${f.note ?? "divergence between sources"}\n\n> NOTE: Both views are written above on purpose. The standard-source view remains the first-priority reference; the alternate view is retained for transparency and must not be silently dropped.`).join("\n\n") : "No defensible divergence between the gathered evidence and standard sources was identified in this run."}
+   350→`;
+   351→  if (/##\s*6\.\s*(Global Criticism|References)/i.test(content)) {
+   352→    content = content.replace(/##\s*6\.\s*Global Criticism[\s\S]*?(?=\n##\s*7\.|\s*$)/i, section.trim());
+   353→    if (!/##\s*7\./i.test(content)) content = content.replace(/##\s*References/gi, "## 7. References");
+   354→  } else {
+   355→    content += "\n" + section;
+   356→  }
+   357→  content = sanitizeDocumentText(content).text;
+   358→  await db.report.update({ where: { id: rawReport.id }, data: { content } });
+   359→  await setStep(runId, "criticism", "done", `${flags.length} instead-point(s) flagged - both views written, user alerted`, { flags: flags.length });
+   360→}
+   361→
+   362→// ---------------- Stage 6: output1 ----------------
+   363→async function stageOutput1(runId: string) {
+   364→  const raw = await db.report.findFirst({ where: { runId, kind: "raw" }, orderBy: { version: "desc" } });
+   365→  await setStep(runId, "output1", "done", "Raw AI report is now visible in the Output section. Moving to the guider & peer analyser.", { reportId: raw?.id ?? null });
+   366→}
+   367→
+   368→// ---------------- Stage 7: guider ----------------
+   369→async function stageGuider(runId: string, run: { query: string; yearFrom: number | null; yearTo: number | null }) {
+   370→  await setStep(runId, "guider", "running");
+   371→  const runRow = await db.researchRun.findUniqueOrThrow({ where: { id: runId }, select: { includeDatasheets: true } });
+   372→  const [rawReport, flags, datasheets] = await Promise.all([
+   373→    db.report.findFirst({ where: { runId, kind: "raw" }, orderBy: { version: "desc" } }),
+   374→    db.flagItem.findMany({ where: { runId } }),
+   375→    runRow.includeDatasheets ? db.datasheetEntry.findMany({ orderBy: { createdAt: "asc" } }) : Promise.resolve([] as Array<{ fieldName: string; value: string; unit: string | null; year: number | null; source: string | null; note: string | null }>),
+   376→  ]);
+   377→  if (!rawReport) throw new Error("raw report missing");
+   378→
+   379→  const dsBlock = datasheets.length
+   380→    ? datasheets.map((d) => `- ${d.fieldName}: ${d.value}${d.unit ? " " + d.unit : ""}${d.year ? ` (${d.year})` : ""} | source: ${d.source ?? "user"}${d.note ? ` | note: ${d.note}` : ""}`).join("\n")
+   381→    : "(none provided for this run)";
+   382→
+   383→  const system = `You are the Guider and Peer Data Analyser. Your job: read the raw AI report and ALL supporting data (flags, user datasheets), then produce a MANAGED MASTER REPORT that is complete, well organised, and auditable. You must retain every data point, number, citation tag [En], and every INSTEAD POINT from the raw report. You also run a completeness self-check at the end.`;
+   384→
+   385→  const user = `RESEARCH QUERY: ${run.query}
+   386→YEAR RANGE: ${run.yearFrom && run.yearTo ? `${run.yearFrom}-${run.yearTo}` : "not specified"}
+   387→
+   388→RAW AI REPORT:
+   389→${rawReport.content.slice(0, 14000)}
+   390→
+   391→INSTEAD-POINT FLAGS (keep every one, in a dedicated section):
+   392→${flags.length ? flags.map((f, i) => `${i + 1}. claim: ${f.claim} | standard: ${f.standardView} | alternate: ${f.alternateView} | note: ${f.note ?? ""}`).join("\n") : "(none)"}
+   393→
+   394→USER DATASHEET DATA:
+   395→${dsBlock}
+   396→
+   397→Write the MASTER MANAGED REPORT in markdown with EXACTLY these sections:
+   398→# Master Managed Report
+   399→## 1. Scope and Method
+   400→What was searched (platforms, tier mix, year range), how evidence was graded, and that user datasheet data is included where present.
+   401→## 2. Managed Findings
+   402→Consolidated findings (merge duplicates), citations preserved [En], out-of-range evidence still marked.
+   403→## 3. Instead Points (Both Views Retained)
+   404→Every flag as: claim / standard view / alternate view / note, each labelled "INSTEAD POINT".
+   405→## 4. Image and Data Credibility Ledger
+   406→How images and sources were vetted (kept vs removed, thresholds).
+   407→## 5. Datasheet Additions Page
+   408→Tabulate the user's own data (field, value, unit, year, source, note) or state none were provided.
+   409→## 6. Completeness Self-Check
+   410→A checklist confirming each raw-report data cluster is present; list anything genuinely missing from the underlying evidence.
+   411→## 7. References
+   412→Full reference list identical to the raw report's.`;
+   413→
+   414→  const master = await chatText(system, user, 7000);
+   415→  const { text } = sanitizeDocumentText(master);
+   416→  const saved = await db.report.create({
+   417→    data: { runId, kind: "master", version: 1, content: text || "Master report generation returned empty output." },
+   418→  });
+   419→  await setStep(runId, "guider", "done", `Master report managed (${Math.round(text.length / 1000)}k chars)`, { reportId: saved.id });
+   420→  return saved;
+   421→}
+   422→
+   423→// ---------------- Stage 8 + 9: humanify / verify loop ----------------
+   424→const HUMANIFY_RULES = `STYLE RULES (must all hold):
+   425→- Write like a careful human medical researcher: plain, direct academic English.
+   426→- Vary sentence length; prefer active voice; use "we" for authorial actions.
+   427→- FORBIDDEN phrases: "delve", "it is important to note that", "in conclusion", "furthermore", "moreover", "as an AI", "here is", "this report aims to", "landscape", "tapestry".
+   428→- Do NOT add em-dash chains, emoji, or rhetorical filler.
+   429→- Keep ALL facts, numbers, years, citation tags [En], tables, INSTEAD POINT labels, and the References section EXACTLY as in the source (you may reword around them, never remove or alter values).
+   430→- Keep markdown structure (headings, lists, tables). Keep every image markdown line unchanged.
+   431→- Do NOT invent any new fact, number, or source.`;
+   432→
+   433→async function humanifyOnce(runId: string, masterContent: string, missing: string[], version: number) {
+   434→  const system = `You are the Humanification Editor. You rewrite a managed medical report so it reads naturally and unambiguously human, without losing a single data point.\n${HUMANIFY_RULES}`;
+   435→  const user = `MASTER REPORT (version to rewrite):
+   436→${masterContent.slice(0, 14000)}
+   437→
+   438→${missing.length ? `THE DATA ANALYSER FOUND THESE MISSING/WEAKENED POINTS IN THE PREVIOUS HUMANIFIED VERSION. RESTORE ALL OF THEM FULLY:\n${missing.map((m, i) => `${i + 1}. ${m}`).join("\n")}\n` : ""}
+   439→Return ONLY the full rewritten report in markdown (same section skeleton, including References).`;
+   440→  const text = await chatText(system, user, 7000);
+   441→  const { text: clean } = sanitizeDocumentText(text);
+   442→  return clean || "(empty humanification output)";
+   443→}
+   444→
+   445→async function verifyOnce(runId: string, masterContent: string, humanizedContent: string) {
+   446→  const system = `You are the Data Analyser running a completeness audit. You compare the humanified report against the managed master report. Your ONLY job is to detect data points, numbers, citation tags, INSTEAD POINTS, image lines, or references that are MISSING or materially weakened in the humanified version. Be strict about data, indifferent about wording.`;
+   447→  const user = `MASTER REPORT:
+   448→${mdToPlain(masterContent).slice(0, 9000)}
+   449→
+   450→HUMANIFIED REPORT:
+   451→${mdToPlain(humanizedContent).slice(0, 9000)}
+   452→
+   453→Return JSON: {"pass": boolean, "missing": ["each missing or weakened data point, phrased as an instruction"], "altered": ["any value that changed between versions"]}
+   454→pass=true only if missing is empty.`;
+   455→  const parsed = await chatJson<{ pass: boolean; missing?: string[]; altered?: string[] }>(system, user, 1600);
+   456→  const missing = (parsed?.missing ?? []).filter((m) => typeof m === "string" && m.trim());
+   457→  return { pass: parsed?.pass === true && missing.length === 0, missing, altered: parsed?.altered ?? [] };
+   458→}
+   459→
+   460→// ---------------- Stage 10: output2 ----------------
+   461→async function stageOutput2(runId: string, iterations: number, pass: boolean) {
+   462→  const [raw, humanized] = await Promise.all([
+   463→    db.report.findFirst({ where: { runId, kind: "raw" }, orderBy: { version: "desc" } }),
+   464→    db.report.findFirst({ where: { runId, kind: "humanized" }, orderBy: { version: "desc" } }),
+   465→  ]);
+   466→  await setStep(
+   467→    runId, "output2", "done",
+   468→    `Final documents ready: Raw AI report + Humanified report (${iterations} verification iteration(s), ${pass ? "completeness PASS" : "best-of-N published"}). Both are in the Output section.`,
+   469→    { rawReportId: raw?.id ?? null, humanizedReportId: humanized?.id ?? null, iterations, pass },
+   470→  );
+   471→}
+   472→
+   473→// ---------------- orchestrator ----------------
+   474→export async function runPipeline(runId: string) {
+   475→  try {
+   476→    await db.researchRun.update({ where: { id: runId }, data: { status: "running", error: null } });
+   477→    const { routerOut, run } = await stageRouter(runId);
+   478→
+   479→    await stageGather(runId, routerOut, run);
+   480→
+   481→    const searchTerms: string[] = JSON.parse((await db.researchRun.findUniqueOrThrow({ where: { id: runId }, select: { searchTermsJson: true } })).searchTermsJson);
+   482→    await stageImages(runId, searchTerms, run.query);
+   483→
+   484→    await stageSynthesize(runId, run);
+   485→    await stageCriticism(runId, run);
+   486→    await stageOutput1(runId);
+   487→    await stageGuider(runId, run);
+   488→
+   489→    // humanify + verify loop (max 3 humanified versions)
+   490→    const master = await db.report.findFirst({ where: { runId, kind: "master" }, orderBy: { version: "desc" } });
+   491→    if (!master) throw new Error("master report missing");
+   492→
+   493→    let pass = false;
+   494→    let missing: string[] = [];
+   495→    let iterations = 0;
+   496→    let latestHumanized = "";
+   497→
+   498→    for (let v = 1; v <= 3; v++) {
+   499→      await setStep(runId, "humanify", "running", v === 1 ? "Rewriting master report in natural academic tone" : `Restoring ${missing.length} missing point(s) flagged by the data analyser`, { version: v });
+   500→      latestHumanized = await humanifyOnce(runId, master.content, missing, v);
+   501→      const h = await db.report.create({
+   502→        data: { runId, kind: "humanized", version: v, content: latestHumanized, verifyStatus: null, missingJson: JSON.stringify(missing) },
+   503→      });
+   504→      iterations = v;
+   505→      await setStep(runId, "verify", "running", `Data analyser audit ${v}/3 - comparing against master report`, { version: v, reportId: h.id });
+   506→      const verdict = await verifyOnce(runId, master.content, latestHumanized);
+   507→      pass = verdict.pass;
+   508→      missing = verdict.missing;
+   509→      await db.report.update({
+   510→        where: { id: h.id },
+   511→        data: { verifyStatus: pass ? "pass" : "fail", missingJson: JSON.stringify(verdict.missing) },
+   512→      });
+   513→      if (pass) {
+   514→        await setStep(runId, "humanify", "done", `Humanified version ${v} accepted by data analyser`, { version: v });
+   515→        await setStep(runId, "verify", "done", `Completeness PASS on iteration ${v} - no missing data points`, { pass: true, iterations: v });
+   516→        break;
+   517→      }
+   518→      await setStep(runId, "verify", "done", `Iteration ${v}: ${missing.length} point(s) missing - sending back through humanification`, { pass: false, missing: missing.slice(0, 20), iterations: v });
+   519→      if (v === 3) {
+   520→        await setStep(runId, "humanify", "done", `Best-of-3 humanified version published (analyser still flags ${missing.length} minor point(s); both reports retained for transparency)`, { version: 3 });
+   521→      }
+   522→    }
+   523→
+   524→    await stageOutput2(runId, iterations, pass);
+   525→    await db.researchRun.update({ where: { id: runId }, data: { status: "done" } });
+   526→  } catch (err) {
+   527→    await failRun(runId, (await db.researchRun.findUnique({ where: { id: runId }, select: { currentStep: true } }))?.currentStep ?? "router", err);
+   528→  }
+   529→}
+   530→

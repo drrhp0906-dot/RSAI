@@ -33,3 +33,28 @@ Stage Summary:
 - Deliverable: /home/z/my-project/download/mbbs_research_platforms.txt (verified 27 Oct 2026), companion to Task 1 guideline list.
 - Key decisions: CTRI (ctri.gov.in) included despite maintenance (it is the official Indian registry, with explicit note); DAMS excluded as unreachable; IJMR hosted at ijmr.org.in (confirmed).
 - Reusable artifact: scripts/check_platforms.py.
+
+---
+Task ID: 3
+Agent: main (Z.ai)
+Task: Continue verifying the MedRoute Evidence Pipeline web app (multi-stage research pipeline for MBBS research): code review, bug fixes, live end-to-end verification of all 10 stages, credibility guarantees, and document exports.
+
+Work Log:
+- Loaded LLM/docx/xlsx skills; read worklog; discovered the pipeline Next.js app already scaffolded (schema with 10 PipelineSteps, EvidenceItem, ImageItem, Report kinds raw/master/humanized, FlagItem "instead points", DatasheetEntry; platforms.ts embeds the 95 verified domains from Tasks 1-2 with tiered trust scoring).
+- Fixed TS error in docx-export.ts: docx v9 ImageRun now requires `type` - added magic-byte sniffing (png/jpg/gif/bmp) + sharp metadata for real aspect ratios (was hardcoded 550x340); unknown formats degrade to caption notes.
+- Excluded examples/ and skills/ from tsconfig; `npx tsc --noEmit` now clean.
+- Fixed Stage 3 image credibility: image search returns CDN-proxied original_url; credibility now resolves the real origin via the `source` field (domain form, catalog-name match, or non-CDN URL host) + resolution floor 200px. Result: kept images now come from acc.org, nature.com, pmc.ncbi.nlm.nih.gov; .com blogs correctly rejected.
+- New deterministic guard enforceApprovedImages(): every embedded image URL must be an approved kept URL; LLM URL typos repaired by basename match (caught live: mcp->mpt corruption in run 1), non-approved refs stripped. Applied at synthesize, guider, and humanify stages.
+- New deterministic preservationDefects() audit wired into verifyOnce: image lines, [En] citation tags, and INSTEAD POINT labels may never shrink master->humanized; LLM verdict + defects must both pass. 7/7 unit tests pass (scripts/test-preservation.ts).
+- Fixed image loss at guider stage (run 2 audit): guider prompt now requires retaining every figure verbatim + deterministic carry-over re-inserts dropped approved figures into the ledger section.
+- Fixed docx exporter image regex to accept bulleted/numbered image lines with trailing credibility captions.
+- Verified SDK runtime: chat + web_search + image search work under bun (worker process); test scripts in scripts/test-*.mjs.
+- API smoke tests: /api, datasheets GET/POST/DELETE, runs GET all pass; homepage renders all 3 tabs.
+- THREE full E2E runs all completed status=done with 0 errors: (1) hypertension 2018-2026 -> ACC/ESC/NHLBI/MoHFW/NICE/Cochrane, 24 evidence (18 P1), 6 instead points incl. the real ACC/AHA 130 vs ESC 140 threshold dispute; (2) diabetes 2020-2026 -> ADA/IDF/NICE/Cochrane/PubMed/ICMR, 5 instead points, user datasheet (HbA1c 7.8%) merged into reports; (3) dengue 2019-2026 -> WHO/NCDC/ICMR/MoHFW/PubMed/IJMR, 6 instead points, image chain 3/3 preserved raw->master->humanized. Humanify/verify loop: all runs PASS (verified humanified reports have zero AI-cliche phrases, all citation tags, all instead points).
+- docx exports validated: valid OOXML, zero SmartArt parts, credibility ledger footer, media embedded (3-4 figures/run), graceful "source unreachable" degradation for the one corrupted URL in run 1.
+- Sample exports copied to download/pipeline-sample-exports/ (3 files).
+
+Stage Summary:
+- Deliverable: verified MedRoute Evidence Pipeline (Next.js 16 + Prisma/SQLite + z-ai SDK via detached bun worker; UI tabs Run Pipeline / Datasheets / Output Section).
+- All 8 user-spec steps + 4 credibility requirements (text/citation management, image credibility check, SmartArt sanitisation + plain-flow-only export, datasheets addition page) verified live end-to-end x3.
+- Remaining known-good limitation: docx export of SmartArt is impossible by design (sanitizer strips markers; exporter emits plain flow content only).

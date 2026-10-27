@@ -14,7 +14,7 @@
 
 import { db } from "./db";
 import { chatJson, chatText, imageSearch, sleep, webSearch } from "./ai";
-import { PRIORITY_1, PRIORITY_2, findByDomain, heuristicRoute, imageTrust, domainTrust } from "./platforms";
+import { ALL_PLATFORMS, PRIORITY_1, PRIORITY_2, findByDomain, heuristicRoute, imageTrust, domainTrust } from "./platforms";
 import { mdToPlain, sanitizeDocumentText } from "./sanitize";
 
 export const STEP_DEFS: Array<{ key: string; title: string }> = [
@@ -200,6 +200,42 @@ async function stageGather(runId: string, routerOut: RouterOut, run: { query: st
 }
 
 // ---------------- Stage 3: images ----------------
+
+/** The search SDK serves image bytes through its own CDN; credibility must
+ *  come from the real origin, which arrives in the `source` field. */
+const IMAGE_CDN_HOSTS = ["z-cdn.chatglm.cn", "chatglm.cn"];
+
+function parsePx(v: unknown): number | null {
+  if (v === null || v === undefined) return null;
+  const n = parseInt(String(v).replace(/[^0-9]/g, ""), 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** Resolve the true origin domain of an image-search result. */
+function originDomainOf(r: { original_url?: string; source?: string }): string | null {
+  const urlHost = (() => {
+    try {
+      return new URL(r.original_url ?? "").hostname.replace(/^www\./, "").toLowerCase();
+    } catch {
+      return null;
+    }
+  })();
+  // If the URL points at the real origin (not the proxy CDN), trust it.
+  if (urlHost && !IMAGE_CDN_HOSTS.some((c) => urlHost === c || urlHost.endsWith(`.${c}`))) {
+    return urlHost;
+  }
+  // Otherwise use the `source` metadata: either a bare domain or a site name.
+  const s = (r.source ?? "").trim().toLowerCase().replace(/^www\./, "");
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(s)) return s; // already a domain
+  if (s) {
+    const byName = ALL_PLATFORMS.find(
+      (p) => p.name.toLowerCase() === s || p.name.toLowerCase().includes(s) || s.includes(p.name.toLowerCase()),
+    );
+    if (byName) return byName.domain;
+  }
+  return null;
+}
+
 async function stageImages(runId: string, searchTerms: string[], query: string) {
   await setStep(runId, "images", "running");
   const imgQueries = searchTerms.slice(0, 2);
@@ -209,18 +245,23 @@ async function stageImages(runId: string, searchTerms: string[], query: string) 
   await db.imageItem.deleteMany({ where: { runId } });
   const seen = new Set<string>();
   const candidates: Array<{ url: string; sourceDomain: string | null; caption: string | null }> = [];
+  let lowRes = 0;
   for (const q of imgQueries.slice(0, 3)) {
     const res = await imageSearch(q, 5);
     for (const r of res) {
       if (!r?.original_url || seen.has(r.original_url)) continue;
       seen.add(r.original_url);
-      let host: string | null = null;
-      try {
-        host = new URL(r.original_url).hostname.replace(/^www\./, "");
-      } catch {
-        host = null;
+      const w = parsePx(r.original_width);
+      const h = parsePx(r.original_height);
+      if ((w !== null && w < 200) || (h !== null && h < 200)) {
+        lowRes++;
+        continue; // resolution too low to be a report figure
       }
-      candidates.push({ url: r.original_url, sourceDomain: host, caption: (r.caption || q).slice(0, 200) });
+      candidates.push({
+        url: r.original_url,
+        sourceDomain: originDomainOf(r),
+        caption: (r.caption || q).slice(0, 200),
+      });
     }
     await sleep(150);
   }
@@ -241,12 +282,64 @@ async function stageImages(runId: string, searchTerms: string[], query: string) 
       })),
     });
   }
-  await setStep(runId, "images", "done", `${kept.length} credible images kept, ${finalRows.length - kept.length} removed by credibility check`, { found: scored.length, kept: kept.length });
+  await setStep(runId, "images", "done", `${kept.length} credible images kept, ${finalRows.length - kept.length} removed by credibility check${lowRes ? `, ${lowRes} skipped (resolution too low)` : ""}`, { found: scored.length + lowRes, kept: kept.length });
 }
 
 // ---------------- helpers for report stages ----------------
 async function loadEvidence(runId: string) {
   return db.evidenceItem.findMany({ where: { runId }, orderBy: [{ trust: "desc" }, { url: "asc" }] });
+}
+
+async function loadApprovedImageUrls(runId: string): Promise<string[]> {
+  const kept = await db.imageItem.findMany({ where: { runId, kept: true }, select: { url: true } });
+  return kept.map((k) => k.url);
+}
+
+/** Deterministic image-credibility guarantee: every embedded markdown image
+ *  must point at an approved (credibility-checked) URL. LLMs occasionally
+ *  corrupt URLs while copying them; exact-basename matches are repaired,
+ *  anything else that is not approved is stripped. */
+function enforceApprovedImages(content: string, approved: string[]): { text: string; repaired: number; removed: number } {
+  if (!content) return { text: content, repaired: 0, removed: 0 };
+  const base = (u: string) => u.split("/").pop() || u;
+  let repaired = 0;
+  let removed = 0;
+  const text = content.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (full, alt: string, url: string) => {
+    if (approved.includes(url)) return full;
+    const hit = approved.find((a) => base(a) === base(url));
+    if (hit) {
+      repaired++;
+      return `![${alt}](${hit})`;
+    }
+    removed++;
+    return "";
+  });
+  return { text: text.replace(/\n{3,}/g, "\n\n").trim(), repaired, removed };
+}
+
+/** Deterministic data-preservation audit run by the analyser alongside the
+ *  LLM verdict: figures, citation tags and INSTEAD POINT labels may never
+ *  disappear between the master report and the humanified rewrite. */
+export function preservationDefects(master: string, candidate: string): string[] {
+  const defects: string[] = [];
+  const imgs = (s: string) => (s.match(/!\[[^\]]*\]\([^)\s]+\)/g) ?? []).length;
+  const ip = (s: string) => (s.match(/INSTEAD POINT/g) ?? []).length;
+  const tags = (s: string) => Array.from(new Set(s.match(/\[E\d+\]/g) ?? []));
+  const nMaster = imgs(master);
+  const nCand = imgs(candidate);
+  if (nCand < nMaster) {
+    defects.push(`All ${nMaster} embedded evidence figure(s) must survive as markdown image lines exactly as written in the master report (only ${nCand} found in the rewrite).`);
+  }
+  const missingTags = tags(master).filter((t) => !new Set(tags(candidate)).has(t));
+  if (missingTags.length) {
+    defects.push(`Restore the citation tag(s) ${missingTags.slice(0, 10).join(", ")} - every [En] anchor of the master report must remain.`);
+  }
+  const nIpMaster = ip(master);
+  const nIpCand = ip(candidate);
+  if (nIpCand < nIpMaster) {
+    defects.push(`Keep every INSTEAD POINT label (master has ${nIpMaster}, rewrite has ${nIpCand}) - both views on every flagged disagreement must stay.`);
+  }
+  return defects;
 }
 
 function evidenceBlock(items: Awaited<ReturnType<typeof loadEvidence>>): string {
@@ -306,11 +399,13 @@ Embed ONLY the credible images listed above (exact markdown), each with a one-li
 List every [E#] as: [E1] domain - title - year - URL.`;
 
   const raw = await chatText(system, user, 6500);
-  const { text } = sanitizeDocumentText(raw);
+  const approvedUrls = await loadApprovedImageUrls(runId);
+  const imgGuard = enforceApprovedImages(raw, approvedUrls);
+  const { text } = sanitizeDocumentText(imgGuard.text);
   const saved = await db.report.create({
     data: { runId, kind: "raw", version: 1, content: text || "Report generation returned empty output.", verifyStatus: null, missingJson: null },
   });
-  await setStep(runId, "synthesize", "done", `Raw AI report drafted (${Math.round(text.length / 1000)}k chars, ${evidence.length} evidence anchors)`, { reportId: saved.id, evidenceAnchors: evidence.length });
+  await setStep(runId, "synthesize", "done", `Raw AI report drafted (${Math.round(text.length / 1000)}k chars, ${evidence.length} evidence anchors${imgGuard.repaired ? `; ${imgGuard.repaired} image URL(s) repaired to approved sources` : ""}${imgGuard.removed ? `; ${imgGuard.removed} unapproved image ref(s) removed` : ""})`, { reportId: saved.id, evidenceAnchors: evidence.length, imagesRepaired: imgGuard.repaired, imagesRemoved: imgGuard.removed });
   return saved;
 }
 
@@ -380,7 +475,7 @@ async function stageGuider(runId: string, run: { query: string; yearFrom: number
     ? datasheets.map((d) => `- ${d.fieldName}: ${d.value}${d.unit ? " " + d.unit : ""}${d.year ? ` (${d.year})` : ""} | source: ${d.source ?? "user"}${d.note ? ` | note: ${d.note}` : ""}`).join("\n")
     : "(none provided for this run)";
 
-  const system = `You are the Guider and Peer Data Analyser. Your job: read the raw AI report and ALL supporting data (flags, user datasheets), then produce a MANAGED MASTER REPORT that is complete, well organised, and auditable. You must retain every data point, number, citation tag [En], and every INSTEAD POINT from the raw report. You also run a completeness self-check at the end.`;
+  const system = `You are the Guider and Peer Data Analyser. Your job: read the raw AI report and ALL supporting data (flags, user datasheets), then produce a MANAGED MASTER REPORT that is complete, well organised, and auditable. You must retain every data point, number, citation tag [En], every INSTEAD POINT, and EVERY embedded evidence image markdown line EXACTLY as written in the raw report. You also run a completeness self-check at the end.`;
 
   const user = `RESEARCH QUERY: ${run.query}
 YEAR RANGE: ${run.yearFrom && run.yearTo ? `${run.yearFrom}-${run.yearTo}` : "not specified"}
@@ -403,7 +498,7 @@ Consolidated findings (merge duplicates), citations preserved [En], out-of-range
 ## 3. Instead Points (Both Views Retained)
 Every flag as: claim / standard view / alternate view / note, each labelled "INSTEAD POINT".
 ## 4. Image and Data Credibility Ledger
-How images and sources were vetted (kept vs removed, thresholds).
+How images and sources were vetted (kept vs removed, thresholds). Then a subsection "Embedded Evidence Figures" that repeats every evidence image markdown line from the raw report verbatim.
 ## 5. Datasheet Additions Page
 Tabulate the user's own data (field, value, unit, year, source, note) or state none were provided.
 ## 6. Completeness Self-Check
@@ -412,11 +507,30 @@ A checklist confirming each raw-report data cluster is present; list anything ge
 Full reference list identical to the raw report's.`;
 
   const master = await chatText(system, user, 7000);
-  const { text } = sanitizeDocumentText(master);
+  const approvedUrls = await loadApprovedImageUrls(runId);
+  let imgGuard = enforceApprovedImages(master, approvedUrls);
+  let masterText = imgGuard.text;
+  // Deterministic carry-over: the master must retain every approved figure the
+  // raw report embedded. If the model dropped any, re-insert them under the
+  // credibility ledger section so downstream stages cannot lose them.
+  const rawImgLines = (rawReport.content.match(/!\[[^\]]*\]\([^)\s]+\)[^\n]*/g) ?? []).filter((l) =>
+    approvedUrls.some((u) => l.includes(u)),
+  );
+  const missingFigures = rawImgLines.filter((l) => !masterText.includes(l.split("](")[1]?.split(")")[0] ?? "\u0000"));
+  if (missingFigures.length) {
+    const block = `\n### Embedded Evidence Figures\n${missingFigures.join("\n")}\n`;
+    if (/\n##\s*5\./.test(masterText)) {
+      masterText = masterText.replace(/\n##\s*5\./, `${block}\n## 5.`);
+    } else {
+      masterText = `${masterText}\n${block}`;
+    }
+  }
+  const { text } = sanitizeDocumentText(masterText);
   const saved = await db.report.create({
     data: { runId, kind: "master", version: 1, content: text || "Master report generation returned empty output." },
   });
-  await setStep(runId, "guider", "done", `Master report managed (${Math.round(text.length / 1000)}k chars)`, { reportId: saved.id });
+  const carried = missingFigures.length;
+  await setStep(runId, "guider", "done", `Master report managed (${Math.round(text.length / 1000)}k chars${carried ? `; ${carried} evidence figure(s) restored from raw report` : ""}${imgGuard.repaired ? `; ${imgGuard.repaired} image URL(s) repaired` : ""}${imgGuard.removed ? `; ${imgGuard.removed} unapproved image ref(s) removed` : ""})`, { reportId: saved.id });
   return saved;
 }
 
@@ -438,7 +552,9 @@ ${masterContent.slice(0, 14000)}
 ${missing.length ? `THE DATA ANALYSER FOUND THESE MISSING/WEAKENED POINTS IN THE PREVIOUS HUMANIFIED VERSION. RESTORE ALL OF THEM FULLY:\n${missing.map((m, i) => `${i + 1}. ${m}`).join("\n")}\n` : ""}
 Return ONLY the full rewritten report in markdown (same section skeleton, including References).`;
   const text = await chatText(system, user, 7000);
-  const { text: clean } = sanitizeDocumentText(text);
+  const approvedUrls = await loadApprovedImageUrls(runId);
+  const imgGuard = enforceApprovedImages(text, approvedUrls);
+  const { text: clean } = sanitizeDocumentText(imgGuard.text);
   return clean || "(empty humanification output)";
 }
 
@@ -453,7 +569,10 @@ ${mdToPlain(humanizedContent).slice(0, 9000)}
 Return JSON: {"pass": boolean, "missing": ["each missing or weakened data point, phrased as an instruction"], "altered": ["any value that changed between versions"]}
 pass=true only if missing is empty.`;
   const parsed = await chatJson<{ pass: boolean; missing?: string[]; altered?: string[] }>(system, user, 1600);
-  const missing = (parsed?.missing ?? []).filter((m) => typeof m === "string" && m.trim());
+  const llmMissing = (parsed?.missing ?? []).filter((m) => typeof m === "string" && m.trim());
+  // deterministic preservation audit (cannot be fooled by wording)
+  const defects = preservationDefects(masterContent, humanizedContent);
+  const missing = [...llmMissing, ...defects];
   return { pass: parsed?.pass === true && missing.length === 0, missing, altered: parsed?.altered ?? [] };
 }
 

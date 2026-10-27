@@ -2,7 +2,7 @@
 
 ---
 Task ID: 1
-Agent: main (Z.ai)
+Agent: main
 Task: Create a .txt file of first-priority, currently-active guideline website domains for MBBS research (India context), covering WHO, ESC, AHA, ICMR and other authoritative bodies.
 
 Work Log:
@@ -19,7 +19,7 @@ Stage Summary:
 
 ---
 Task ID: 2
-Agent: main (Z.ai)
+Agent: main
 Task: Follow-up request - create a second .txt list of the other largely-used platforms for MBBS research (PubMed, CDC-style daily-use platforms: databases, journals, clinical reference, drug resources, education platforms, research tools).
 
 Work Log:
@@ -36,7 +36,7 @@ Stage Summary:
 
 ---
 Task ID: 3
-Agent: main (Z.ai)
+Agent: main
 Task: Continue verifying the MedRoute Evidence Pipeline web app (multi-stage research pipeline for MBBS research): code review, bug fixes, live end-to-end verification of all 10 stages, credibility guarantees, and document exports.
 
 Work Log:
@@ -55,6 +55,6 @@ Work Log:
 - Sample exports copied to download/pipeline-sample-exports/ (3 files).
 
 Stage Summary:
-- Deliverable: verified MedRoute Evidence Pipeline (Next.js 16 + Prisma/SQLite + z-ai SDK via detached bun worker; UI tabs Run Pipeline / Datasheets / Output Section).
+- Deliverable: verified MedRoute Evidence Pipeline (Next.js 16 + Prisma/SQLite + lm-sdk via detached bun worker; UI tabs Run Pipeline / Datasheets / Output Section).
 - All 8 user-spec steps + 4 credibility requirements (text/citation management, image credibility check, SmartArt sanitisation + plain-flow-only export, datasheets addition page) verified live end-to-end x3.
 - Remaining known-good limitation: docx export of SmartArt is impossible by design (sanitizer strips markers; exporter emits plain flow content only).

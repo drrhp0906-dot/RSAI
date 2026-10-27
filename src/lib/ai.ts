@@ -1,16 +1,16 @@
-import type ZAI from "z-ai-web-dev-sdk";
+import type AiSdk from "z-ai-web-dev-sdk";
 
 // NOTE: the SDK is loaded lazily via dynamic import. A static top-level
 // import of this package crashes the Turbopack dev server when the route
 // module graph is compiled (process dies silently on first request).
-let _zai: ZAI | null = null;
+let _sdk: AiSdk | null = null;
 
-export async function getZAI(): Promise<ZAI> {
-  if (!_zai) {
+export async function getClient(): Promise<AiSdk> {
+  if (!_sdk) {
     const mod = await import("z-ai-web-dev-sdk");
-    _zai = await mod.default.create();
+    _sdk = await mod.default.create();
   }
-  return _zai;
+  return _sdk;
 }
 
 /** Extract the assistant text from a chat completion result. */
@@ -21,8 +21,8 @@ export function completionText(res: unknown): string {
 
 /** Plain text completion (thinking disabled for speed). */
 export async function chatText(system: string, user: string, maxTokens = 4000): Promise<string> {
-  const zai = await getZAI();
-  const res = await zai.chat.completions.create({
+  const client = await getClient();
+  const res = await client.chat.completions.create({
     messages: [
       { role: "system", content: system },
       { role: "user", content: user },
@@ -97,18 +97,18 @@ export async function chatJson<T>(system: string, user: string, maxTokens = 2500
 
 /** Web search via the SDK function map. */
 export async function webSearch(query: string, num = 5, recencyDays?: number) {
-  const zai = await getZAI();
+  const client = await getClient();
   const args: { query: string; num: number; recency_days?: number } = { query, num };
   if (recencyDays && recencyDays > 0) args.recency_days = Math.min(recencyDays, 3650);
-  const res = await zai.functions.invoke("web_search", args);
+  const res = await client.functions.invoke("web_search", args);
   return res ?? [];
 }
 
 /** Image search via the SDK. */
 export async function imageSearch(query: string, count = 6) {
-  const zai = await getZAI();
+  const client = await getClient();
   try {
-    const res = await zai.images.search.create({ query, count, rank: true });
+    const res = await client.images.search.create({ query, count, rank: true });
     return res?.results ?? [];
   } catch {
     return [];

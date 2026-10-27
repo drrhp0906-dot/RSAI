@@ -1,7 +1,7 @@
 /**
  * Detached pipeline worker.
  *
- * The z-ai-web-dev-sdk runtime kills the `next dev` node process when its
+ * The LLM SDK runtime kills the `next dev` node process when its
  * API calls run inside the Next.js server (silent hard crash, no output).
  * The SDK works flawlessly under plain bun/node (verified standalone), so
  * the pipeline runs in this separate detached process instead.

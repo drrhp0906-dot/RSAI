@@ -203,7 +203,7 @@ async function stageGather(runId: string, routerOut: RouterOut, run: { query: st
 
 /** The search SDK serves image bytes through its own CDN; credibility must
  *  come from the real origin, which arrives in the `source` field. */
-const IMAGE_CDN_HOSTS = ["z-cdn.chatglm.cn", "chatglm.cn"];
+const IMAGE_CDN_HOSTS = ["img.assets.example.net", "assets.example.net"];
 
 function parsePx(v: unknown): number | null {
   if (v === null || v === undefined) return null;

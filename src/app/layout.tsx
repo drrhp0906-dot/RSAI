@@ -18,22 +18,6 @@ export const metadata: Metadata = {
   description:
     "Route research queries to verified Priority-1 guideline bodies and Priority-2 platforms, run credibility checks, and produce AI-analyser plus humanified reports.",
   keywords: ["MBBS", "evidence pipeline", "medical research", "guidelines", "PubMed", "WHO", "India"],
-  authors: [{ name: "Z.ai Team" }],
-  icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
-  },
-  openGraph: {
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
-    url: "https://chat.z.ai",
-    siteName: "Z.ai",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
-  },
 };
 
 export default function RootLayout({

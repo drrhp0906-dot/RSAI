@@ -1,9 +1,9 @@
 console.log("step1: importing SDK...");
 const mod = await import("z-ai-web-dev-sdk");
 console.log("step2: imported, calling create()...");
-const zai = await mod.default.create();
+const sdk = await mod.default.create();
 console.log("step3: created OK, calling tiny chat...");
-const res = await zai.chat.completions.create({
+const res = await sdk.chat.completions.create({
   messages: [{ role: "user", content: "Reply with the single word: OK" }],
   thinking: { type: "disabled" },
   max_tokens: 10,

@@ -1,9 +1,9 @@
 // Pre-flight: verify web_search + image search under bun (pipeline dependencies)
 const mod = await import("z-ai-web-dev-sdk");
-const zai = await mod.default.create();
+const sdk = await mod.default.create();
 
 console.log("test1: web_search...");
-const ws = await zai.functions.invoke("web_search", {
+const ws = await sdk.functions.invoke("web_search", {
   query: "site:who.int asthma guideline",
   num: 3,
 });
@@ -14,7 +14,7 @@ console.log("sample:", JSON.stringify(first ?? null).slice(0, 220));
 console.log("test2: image search...");
 let imgs = [];
 try {
-  const res = await zai.images.search.create({ query: "asthma inhaler spirometer diagram", count: 3, rank: true });
+  const res = await sdk.images.search.create({ query: "asthma inhaler spirometer diagram", count: 3, rank: true });
   imgs = res?.results ?? [];
 } catch (e) {
   console.log("image search error:", e?.message ?? String(e));

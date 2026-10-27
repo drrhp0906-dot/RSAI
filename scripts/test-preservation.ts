@@ -37,16 +37,16 @@ check("citation tag loss detected", preservationDefects(master, master.replace("
 check("instead-point loss detected", preservationDefects(master, master.replace("INSTEAD POINT 2", "")).length === 1);
 
 // 5: URL repair (typo mcp->mpt)
-const approved = ["https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/d73583e5a519.jpg"];
-const r = enforce("before ![f](https://z-cdn.chatglm.cn/image-search-mpt/images-ppt/d73583e5a519.jpg) after", approved);
+const approved = ["https://img.assets.example.net/image-search-mcp/images-ppt/d73583e5a519.jpg"];
+const r = enforce("before ![f](https://img.assets.example.net/image-search-mpt/images-ppt/d73583e5a519.jpg) after", approved);
 check("corrupt URL repaired", r.repaired === 1 && r.text.includes("image-search-mcp/images-ppt/d73583e5a519.jpg"));
 
 // 6: non-approved URL removed
-const r2 = enforce("keep ![a](https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/d73583e5a519.jpg) drop ![b](https://random.site/x/other.jpg)", approved);
+const r2 = enforce("keep ![a](https://img.assets.example.net/image-search-mcp/images-ppt/d73583e5a519.jpg) drop ![b](https://random.site/x/other.jpg)", approved);
 check("non-approved ref removed", r2.removed === 1 && !r2.text.includes("other.jpg") && r2.text.includes("d73583e5a519.jpg"));
 
 // 7: approved URL untouched
-const r3 = enforce("![a](https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/d73583e5a519.jpg)", approved);
+const r3 = enforce("![a](https://img.assets.example.net/image-search-mcp/images-ppt/d73583e5a519.jpg)", approved);
 check("approved untouched", r3.repaired === 0 && r3.removed === 0 && r3.text.includes("d73583e5a519.jpg"));
 
 process.exit(failed ? 1 : 0);
